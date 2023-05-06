@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using Kitchen;
+using KitchenExampleViews.Views;
 using UnityEngine;
 
 namespace KitchenExampleViews.Patches
@@ -29,11 +30,11 @@ namespace KitchenExampleViews.Patches
                     _responsiveViewPrefab.transform.SetParent(_container.transform);
 
                     // Add Main View Component
-                    _responsiveViewPrefab.AddComponent<ResponsiveViewExample>();
+                    _responsiveViewPrefab.AddComponent<MainViewExample>();
                     Main.LogInfo("Created (ViewType)500");
 
                     // Subviews can be added onto any prefab as well. Subviews receive an update when its ViewData is sent to the the main view; In this case (ViewType)500
-                    _responsiveViewPrefab.AddComponent<ResponsiveSubviewExample>();
+                    _responsiveViewPrefab.AddComponent<SubviewExample>();
                 }
                 __result = _responsiveViewPrefab;
                 return false;

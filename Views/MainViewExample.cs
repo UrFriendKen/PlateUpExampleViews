@@ -6,19 +6,23 @@ using Unity.Collections;
 using Unity.Entities;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
-using static KitchenExampleViews.ResponsiveViews.CreateResponsiveViewEntity;
 
-namespace KitchenExampleViews.ResponsiveViews
+namespace KitchenExampleViews.Views
 {
-    // See CreateResponseViewEntity.cs for application
-    internal class ResponsiveViewExample : ResponsiveObjectView<ResponsiveViewExample.ViewData, ResponsiveViewExample.ResponseData>
+    // Use ResponsiveObjectView if you require receiving data from clients. Otherwise, use UpdatableObjectView instead.
+    public class MainViewExample : ResponsiveObjectView<MainViewExample.ViewData, MainViewExample.ResponseData>
     {
         // Nesting the ViewSystemBase within the View class like this is not a requirement, but helps simplify referencing ViewData and keeps everything organised within the view.
         /// <summary>
-        /// ECS Reponsive View System
-        /// Runs on host and updates views to be broadcasted to clients
-        /// Receives responses from the client to be processed
+        /// ECS View System
+        /// Runs on host and updates views to be broadcasted to clientsYou 
+        /// Receives responses from the client to be processed (For Responsive Views)
+        /// 
+        /// You can use IncrementalViewSystemBase<T> for non-responsive views
+        /// Use ResponsiveViewSystemBase<TView, TResp> for responsive views
+        /// 
         /// </summary>
+
         public class UpdateView : ResponsiveViewSystemBase<ViewData, ResponseData>, IModSystem
         {
             EntityQuery Query;
@@ -33,7 +37,7 @@ namespace KitchenExampleViews.ResponsiveViews
 
                 // Cache Entity Queries
                 // This should contain ALL IComponentData that will be used in the class
-                Query = GetEntityQuery(typeof(CLinkedView), typeof(SResponsiveViewExample));
+                Query = GetEntityQuery(typeof(CLinkedView), typeof(CreateViewEntity.SViewExample));
             }
 
             protected override void OnUpdate()
@@ -61,8 +65,9 @@ namespace KitchenExampleViews.ResponsiveViews
                     else wasPressed = false;
 
 
+                    // You can ignore this if inheriting IncrementalViewSystemBase instead of ResponsiveViewSystemBase
                     // protected bool ApplyUpdates(ViewIdentifier identifier, Action<TResp> act, bool only_final_update = false)
-                    // identifier refers to the view id linked to the entity instance
+                    // As this is a subview, identifier refers to the main view identifier
                     // act is performed for each ResponseData packet received
                     // only_final_update makes act only performed for the latest packet. The rest are ignored.
                     // Set only_final_update to false if you need something to happen for every packet sent, in the event more than 1 packet is received this frame
@@ -98,7 +103,9 @@ namespace KitchenExampleViews.ResponsiveViews
             [Key(0)]
             public int Source;
 
-            // This is a feature of IncrementalViewSystemBase<T>, which ResponsiveViewSystemBase<TView, TResp> inherits
+
+
+            // IsChangedFrom is necessary for IncrementalViewSystemBase<T> to determine if a View Update has to be broadcasted.
             /// <summary>
             /// Check if data has changed since last update. This is called by view system to determine if an update should be sent
             /// </summary>
@@ -108,6 +115,25 @@ namespace KitchenExampleViews.ResponsiveViews
             {
                 return true;
             }
+        }
+
+        // Some private fields used for example. Can be ignored
+        private bool wasPressed = false;
+        private int counter = 0;
+        private KeyControl sendResponseKey = Keyboard.current.yKey;
+
+
+
+        // This is called when a ViewData packet is received
+        protected override void UpdateData(ViewData data)
+        {
+            // Perform any view updates here
+            // Remember that this is Monobehaviour, not ECS
+            // Eg. You can change whether a GameObject is active or not
+            if (data.Source == InputSourceIdentifier.Identifier)
+                Main.LogInfo("Local client received");
+            else
+                Main.LogInfo("Remote client received");
         }
 
 
@@ -128,12 +154,8 @@ namespace KitchenExampleViews.ResponsiveViews
             [Key(1)] public int Sender;
         }
 
-        // Some private fields used for example. Can be ignored
-        private bool wasPressed = false;
-        private int counter = 0;
-        private KeyControl sendResponseKey = Keyboard.current.yKey;
 
-
+        // HasStateUpdate is from ResponsiveViewObject. You can remove this if you are creating a non-responsive view.
         // This is called every frame on the client
         // An update will be broadcasted back to the host if return is true with the response data
         // It is picked up by `bool ResponsiveViewSystemBase.(ViewIdentifier identifier, Action<TResp> act, bool only_final_update = false)`
@@ -159,18 +181,6 @@ namespace KitchenExampleViews.ResponsiveViews
             else wasPressed = false;
 
             return false;
-        }
-
-
-        protected override void UpdateData(ViewData data)
-        {
-            // Perform any view updates here
-            // Remember that this is Monobehaviour, not ECS
-            // Eg. You can change whether a GameObject is active or not
-            if (data.Source == InputSourceIdentifier.Identifier)
-                Main.LogInfo("Local client received");
-            else
-                Main.LogInfo("Remote client received");
         }
     }
 }

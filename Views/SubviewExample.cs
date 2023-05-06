@@ -7,17 +7,22 @@ using Unity.Collections;
 using Unity.Entities;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
-using static KitchenExampleViews.ResponsiveViews.CreateResponsiveViewEntity;
 
-namespace KitchenExampleViews.ResponsiveViews
+namespace KitchenExampleViews.Views
 {
-    public class ResponsiveSubviewExample : UpdatableObjectView<ResponsiveSubviewExample.ViewData>, ISpecificViewResponse
+    // ISpecificViewResponse is only required if you need to received data from clients
+    public class SubviewExample : UpdatableObjectView<SubviewExample.ViewData>, ISpecificViewResponse
     {
         // Nesting the ViewSystemBase within the View class like this is not a requirement, but helps simplify referencing ViewData and keeps everything organised within the view.
         /// <summary>
-        /// ECS Reponsive View System
-        /// Runs on host and updates views to be broadcasted to clients
-        /// Receives responses from the client to be processed
+        /// ECS View System
+        /// Runs on host and updates views to be broadcasted to clientsYou 
+        /// Receives responses from the client to be processed (For Responsive Views)
+        /// 
+        /// You can use IncrementalViewSystemBase<T> for non-responsive views
+        /// Use ResponsiveViewSystemBase<TView, TResp> for responsive views
+        /// ResponsiveViewSystemBase<TView, TResp> inherits IncrementalViewSystemBase<TView>
+        /// 
         /// </summary>
         public class UpdateView : ResponsiveViewSystemBase<ViewData, ResponseData>, IModSystem
         {
@@ -33,7 +38,7 @@ namespace KitchenExampleViews.ResponsiveViews
 
                 // Cache Entity Queries
                 // This should contain ALL IComponentData that will be used in the class
-                Query = GetEntityQuery(typeof(CLinkedView), typeof(SResponsiveViewExample));
+                Query = GetEntityQuery(typeof(CLinkedView), typeof(CreateViewEntity.SViewExample));
             }
 
             protected override void OnUpdate()
@@ -57,6 +62,7 @@ namespace KitchenExampleViews.ResponsiveViews
                     else wasPressed = false;
 
 
+                    // You can ignore this if inheriting IncrementalViewSystemBase instead of ResponsiveViewSystemBase
                     // protected bool ApplyUpdates(ViewIdentifier identifier, Action<TResp> act, bool only_final_update = false)
                     // As this is a subview, identifier refers to the main view identifier
                     // act is performed for each ResponseData packet received
@@ -84,6 +90,7 @@ namespace KitchenExampleViews.ResponsiveViews
         // This should contain the minimum amount of data necessary to perform the view's function.
         // You MUST mark your ViewData as MessagePackObject
         // If you don't, the game will run locally but fail in multiplayer
+        // Note that ISpecificViewData is used here, instead of IViewData, because this is a subview.
         [MessagePackObject(false)]
         public class ViewData : ISpecificViewData, IViewData.ICheckForChanges<ViewData>
         {
@@ -103,12 +110,12 @@ namespace KitchenExampleViews.ResponsiveViews
             /// <returns>Subview instance of type T</returns>
             public IUpdatableObject GetRelevantSubview(IObjectView view)
             {
-                return view.GetSubView<ResponsiveSubviewExample>();
+                return view.GetSubView<SubviewExample>();
             }
 
 
 
-            // This is a feature of IncrementalViewSystemBase<T>, which ResponsiveViewSystemBase<TView, TResp> inherits
+            // IsChangedFrom is necessary for IncrementalViewSystemBase<T> to determine if a View Update has to be broadcasted.
             /// <summary>
             /// Check if data has changed since last update. This is called by view system to determine if an update should be sent
             /// </summary>
@@ -120,7 +127,47 @@ namespace KitchenExampleViews.ResponsiveViews
             }
         }
 
+        // Some private fields used for example. Can be ignored
+        private bool wasPressed = false;
+        private int counter = 0;
+        private KeyControl incrementCounterKey = Keyboard.current.iKey;
+        private int hostInputSourceId = 0;
+        private bool hostRequestedResponse = false;
 
+
+
+        // This is called when a ViewData packet is received
+        protected override void UpdateData(ViewData data)
+        {
+            // Perform any view updates here
+            // Remember that this is Monobehaviour, not ECS
+            // Eg. You can change whether a GameObject is active or not
+            if (data.Source == InputSourceIdentifier.Identifier)
+                Main.LogInfo("Local client received");
+            else
+                Main.LogInfo("Remote client received");
+
+            hostInputSourceId = data.Source;
+            hostRequestedResponse = true;
+        }
+
+
+
+        // Cached callback to send data back to host.
+        // First parameter is the ResponseData instance
+        // Second parameter is typeof(ResponseData). This is used to identify the view system that will handle the response
+        // Callback is initialized after the first ViewData is received
+        private Action<IResponseData, Type> Callback;
+
+
+        // Implementation required for Responsive subviews only
+        // This is automatically called after each UpdateData call
+        // Hence, this is when Callback is initialized
+        public void SetCallback(Action<IResponseData, Type> callback)
+        {
+            // Cache callback to send data back to host.
+            Callback = callback;
+        }
 
 
         // Definition of Message Packet that will be sent back to host via a callback
@@ -139,27 +186,12 @@ namespace KitchenExampleViews.ResponsiveViews
         }
 
 
-        // Cached callback to send data back to host.
-        // First parameter is the ResponseData instance
-        // Second parameter is typeof(ResponseData). This is used to identify the view system that will handle the response
-        // Callback is initialized after the first ViewData is received
-        private Action<IResponseData, Type> Callback;
-
-
-        // Some private fields used for example. Can be ignored
-        private bool wasPressed = false;
-        private int counter = 0;
-        private KeyControl incrementCounterKey = Keyboard.current.iKey;
-        private int hostInputSourceId = 0;
-        private bool hostRequestedResponse = false;
-
-
         // This runs locally for each client every frame
         public void Update()
         {
             // Remember that this is Monobehaviour, not ECS
-            // Use this to prepare the response data to be sent
-            // You can use Callback here as well. But must perform a null check, since Callback may not be initialized (I'm not sure I recommend this XD)
+            // Use this to prepare the response data to be sent (For responsive views)
+            // You can use Callback here but must perform a null check since Callback will be null if a view update has not been received.
 
             if (incrementCounterKey.isPressed)
             {
@@ -181,30 +213,6 @@ namespace KitchenExampleViews.ResponsiveViews
                 counter = 0;
                 hostRequestedResponse = false;
             }
-        }
-
-        protected override void UpdateData(ViewData data)
-        {
-            // Perform any view updates here
-            // Remember that this is Monobehaviour, not ECS
-            // Eg. You can change whether a GameObject is active or not
-            if (data.Source == InputSourceIdentifier.Identifier)
-                Main.LogInfo("Local client received");
-            else
-                Main.LogInfo("Remote client received");
-
-            hostInputSourceId = data.Source;
-            hostRequestedResponse = true;
-        }
-
-
-
-        // This is automatically called after each UpdateData call
-        // Hence, this is when Callback is initialized
-        public void SetCallback(Action<IResponseData, Type> callback)
-        {
-            // Cache callback to send data back to host.
-            Callback = callback;
         }
     }
 }
