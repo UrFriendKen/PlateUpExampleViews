@@ -1,7 +1,4 @@
-﻿using KitchenData;
-using KitchenLib;
-using KitchenLib.Event;
-using KitchenLib.References;
+﻿using KitchenLib;
 using KitchenMods;
 using System.Reflection;
 using UnityEngine;
@@ -30,6 +27,10 @@ namespace KitchenExampleViews
         public const bool DEBUG_MODE = false;
 #endif
 
+        //internal static new Main instance;
+
+        //internal bool IsViewPrefabsInitialised => AssetDirectory?.ViewPrefabs?.ContainsKey((ViewType)500) ?? false;
+
         public static AssetBundle Bundle;
 
         public Main() : base(MOD_GUID, MOD_NAME, MOD_AUTHOR, MOD_VERSION, MOD_GAMEVERSION, Assembly.GetExecutingAssembly()) { }
@@ -41,21 +42,39 @@ namespace KitchenExampleViews
 
         protected override void OnUpdate()
         {
+            //if (AssetDirectory == null || AssetDirectory.ViewPrefabs == null)
+            //{
+            //    return;
+            //}
+
+            //// Creating the view prefab and store in AssetDirectory
+            //// This is stopgap, and a Mod version of AssetDirectory is expected as a better alternative in the future (maybe)
+            //if (!AssetDirectory.ViewPrefabs.ContainsKey((ViewType)500))
+            //{
+            //    // Instantiate GameObject (To become Prefab)
+            //    GameObject go = new GameObject("ExampleViews - ResponsiveViewExample");
+            //    // Add View Component
+            //    go.AddComponent<ResponsiveViewExample>();
+            //    go.hideFlags = HideFlags.HideAndDontSave;
+            //    // Store in AssetDirectory with unique id. Potentially use KitchenLib.Utils.VariousUtils.GetID(string name) and salt with MOD_GUID
+            //    AssetDirectory.ViewPrefabs.Add((ViewType)500, go);
+            //    Main.LogInfo("Added (ViewType)500 to AssetDirectory.ViewPrefabs");
+            //}
         }
 
         protected override void OnPostActivate(KitchenMods.Mod mod)
         {
             // Perform actions when game data is built
-            Events.BuildGameDataEvent += delegate (object s, BuildGameDataEventArgs args)
-            {
-                if (args.firstBuild)
-                {
-                    Appliance blueprintCabinet = args.gamedata.Get<Appliance>(ApplianceReferences.BlueprintCabinet);
-                    GameObject gameObject = new GameObject();
-                    gameObject.AddComponent<ResponsiveSubviewExample>();
-                    gameObject.transform.parent = blueprintCabinet.Prefab.transform;
-                }
-            };
+            //Events.BuildGameDataEvent += delegate (object s, BuildGameDataEventArgs args)
+            //{
+            //    if (args.firstBuild)
+            //    {
+            //        Appliance blueprintCabinet = args.gamedata.Get<Appliance>(ApplianceReferences.BlueprintCabinet);
+            //        GameObject gameObject = new GameObject();
+            //        gameObject.AddComponent<ResponsiveSubviewExample>();
+            //        gameObject.transform.parent = blueprintCabinet.Prefab.transform;
+            //    }
+            //};
         }
         #region Logging
         public static void LogInfo(string _log) { Debug.Log($"[{MOD_NAME}] " + _log); }

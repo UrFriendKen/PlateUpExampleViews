@@ -6,9 +6,9 @@ using Unity.Collections;
 using Unity.Entities;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
-using static KitchenExampleViews.CreateResponsiveViewEntity;
+using static KitchenExampleViews.ResponsiveViews.CreateResponsiveViewEntity;
 
-namespace KitchenExampleViews
+namespace KitchenExampleViews.ResponsiveViews
 {
     // See CreateResponseViewEntity.cs for application
     internal class ResponsiveViewExample : ResponsiveObjectView<ResponsiveViewExample.ViewData, ResponsiveViewExample.ResponseData>
@@ -41,6 +41,10 @@ namespace KitchenExampleViews
                 using NativeArray<CLinkedView> linkedViews = Query.ToComponentDataArray<CLinkedView>(Allocator.Temp);
                 foreach (CLinkedView view in linkedViews)
                 {
+                    CPlayer cplayer = new CPlayer();
+
+                    cplayer.InputSource = InputSourceIdentifier.Identifier;
+
                     // For example. If key is pressed send update.
                     // This behavior can be ignored, and a simple SendUpdate can be done instead with the appropriate data for the view.
                     if (sendUpdateKey.isPressed)
@@ -74,7 +78,8 @@ namespace KitchenExampleViews
             {
                 // Do something for each ResponseData packet received
                 // This is ECS only
-                Main.LogInfo($"{data.Text} (From {(data.Sender == InputSourceIdentifier.Identifier? "local" : "remote")})");
+                Main.LogInfo($"{data.Text} (From {(data.Sender == InputSourceIdentifier.Identifier ? "local" : "remote")})");
+
             }
         }
 
@@ -113,7 +118,7 @@ namespace KitchenExampleViews
         // You MUST mark your ViewData as MessagePackObject
         // If you don't, the game will run locally but fail in multiplayer
         [MessagePackObject(false)]
-        public class ResponseData : IResponseData, IViewResponseData
+        public class ResponseData : IResponseData
         {
             // You MUST also and mark each field with a key
             // All players must be running versions of the game with the same assigned keys.

@@ -7,8 +7,9 @@ using Unity.Collections;
 using Unity.Entities;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
+using static KitchenExampleViews.ResponsiveViews.CreateResponsiveViewEntity;
 
-namespace KitchenExampleViews
+namespace KitchenExampleViews.ResponsiveViews
 {
     public class ResponsiveSubviewExample : UpdatableObjectView<ResponsiveSubviewExample.ViewData>, ISpecificViewResponse
     {
@@ -24,7 +25,7 @@ namespace KitchenExampleViews
 
             // Some private fields used for example. Can be ignored
             private bool wasPressed;
-            private KeyControl sendUpdateKey = Keyboard.current.tKey;
+            private KeyControl sendUpdateKey = Keyboard.current.uKey;
 
             protected override void Initialise()
             {
@@ -32,7 +33,7 @@ namespace KitchenExampleViews
 
                 // Cache Entity Queries
                 // This should contain ALL IComponentData that will be used in the class
-                Query = GetEntityQuery(typeof(CLinkedView), typeof(CBlueprintStore));
+                Query = GetEntityQuery(typeof(CLinkedView), typeof(SResponsiveViewExample));
             }
 
             protected override void OnUpdate()
@@ -148,7 +149,9 @@ namespace KitchenExampleViews
         // Some private fields used for example. Can be ignored
         private bool wasPressed = false;
         private int counter = 0;
-        private KeyControl incrementCounterKey = Keyboard.current.yKey;
+        private KeyControl incrementCounterKey = Keyboard.current.iKey;
+        private int hostInputSourceId = 0;
+        private bool hostRequestedResponse = false;
 
 
         // This runs locally for each client every frame
@@ -167,6 +170,17 @@ namespace KitchenExampleViews
                 wasPressed = true;
             }
             else wasPressed = false;
+
+
+            if (hostRequestedResponse && Callback != null)
+            {
+                Callback.Invoke(new ResponseData
+                {
+                    Text = $"{counter} (Sent by {(hostInputSourceId == InputSourceIdentifier.Identifier ? "local" : "remote")})"
+                }, typeof(ResponseData));
+                counter = 0;
+                hostRequestedResponse = false;
+            }
         }
 
         protected override void UpdateData(ViewData data)
@@ -179,14 +193,8 @@ namespace KitchenExampleViews
             else
                 Main.LogInfo("Remote client received");
 
-
-            // Callback will be null on first UpdateData
-            // Expect a NullReferenceException to be thrown
-            Callback.Invoke(new ResponseData
-            {
-                Text = $"{counter} (Sent by {(data.Source == InputSourceIdentifier.Identifier ? "local" : "remote")})"
-            }, typeof(ResponseData));
-            counter = 0;
+            hostInputSourceId = data.Source;
+            hostRequestedResponse = true;
         }
 
 
